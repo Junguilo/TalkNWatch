@@ -6,10 +6,12 @@
     <button onClick="getCurrTime()"> check Time </button>
     <div id="textTime">test</div>
     
-    <form action="changeTime()">
+    <form onSubmit="changeTime(event)">
+      <label for="timeInput">Enter time (In Seconds)</label>
+      <input type="number" id="timeInput" min = "0" required/>
       <button onClick="changeTime()"> changeTime to 8:20</button>
     </form>
-    
+
     <script>
       // 2. This code loads the IFrame Player API code asynchronously.
       var tag = document.createElement('script');
@@ -71,9 +73,105 @@
         //console.log( player.playerInfo.currentTime);
       }
 
-      function changeTime(){
-        player.seekTo(500, true);
+      function changeTime(event){
+        event.preventDefault();
+        const input = document.getElementById("timeInput").value;
+        const seconds = parseFloat(input);
+        if(!isNaN(seconds)){
+          player.seekTo(seconds, true);
+        }
+        //player.seekTo(500, true);
       }
+
+      // SOCKET.IO
+      // Add Socket.IO client script
+      var socketScript = document.createElement('script');
+      socketScript.src = "https://cdn.socket.io/4.7.4/socket.io.min.js";
+      document.head.appendChild(socketScript);
+      
+      // Initialize Socket.IO connection after script loads
+      socketScript.onload = function() {
+        console.log("Socket.IO script loaded");
+        
+        // Create a div to show connection status
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'connection-status';
+        statusDiv.textContent = 'Connecting to server...';
+        document.body.appendChild(statusDiv);
+        
+        // Initialize Socket.IO connection
+        const socket = io("http://localhost:8080", {
+          reconnectionAttempts: 5,
+          timeout: 10000,
+          transports: ['websocket', 'polling']
+        });
+        
+        // Connection established
+        socket.on("connect", () => {
+          console.log("Connected to Socket.IO server with ID:", socket.id);
+          statusDiv.textContent = 'Connected to server';
+          statusDiv.style.color = 'green';
+          
+          // Send a test message
+          socket.emit("message", "Connection established");
+        });
+        
+        // Receive server signal
+        socket.on("signal", (data) => {
+          console.log("Server signal:", data);
+          // Display signal in UI
+          const signalDiv = document.createElement('div');
+          signalDiv.textContent = "Signal: " + data;
+          document.body.appendChild(signalDiv);
+        });
+        
+        // Listen for broadcast messages
+        socket.on("broadcast", (data) => {
+          console.log("Broadcast message:", data);
+          // Display messages in UI
+          const messageDiv = document.createElement('div');
+          messageDiv.textContent = "Broadcast: " + data;
+          document.body.appendChild(messageDiv);
+        });
+        
+        // Handle connection errors
+        socket.on("connect_error", (error) => {
+          console.error("Connection error:", error);
+          statusDiv.textContent = 'Connection error';
+          statusDiv.style.color = 'red';
+        });
+        
+        // Handle disconnection
+        socket.on("disconnect", (reason) => {
+          console.log("Disconnected from Socket.IO server:", reason);
+          statusDiv.textContent = 'Disconnected from server';
+          statusDiv.style.color = 'orange';
+        });
+        
+        // Listen for any errors
+        socket.on("error", (error) => {
+          console.error("Socket error:", error);
+          statusDiv.textContent = 'Socket error';
+          statusDiv.style.color = 'red';
+        });
+        
+        // Add button to send test messages
+        const sendButton = document.createElement('button');
+        sendButton.textContent = "Send Test Message";
+        sendButton.onclick = function() {
+          const message = "Test message from client at " + new Date().toLocaleTimeString();
+          socket.emit("message", message);
+          
+          // Visual feedback that message was sent
+          const sentDiv = document.createElement('div');
+          sentDiv.textContent = "Sent: " + message;
+          sentDiv.style.color = 'blue';
+          document.body.appendChild(sentDiv);
+          
+          console.log("Sent message:", message);
+        };
+        document.body.appendChild(sendButton);
+      };
     </script>
   </body>
 </html>
