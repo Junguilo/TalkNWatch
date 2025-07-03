@@ -1,10 +1,23 @@
 const http = require('http');
-const server = http.createServer(); //creates a server on 8080
+const express = require('express');
+const path = require('path');
+const app = express();
 const { Server } = require("socket.io");
-// Configure Socket.IO with CORS enabled, needs to be changed when we have a server up and running to our actual web address
+
+// Serve static files
+app.use(express.static(__dirname));
+
+// Route to serve main page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+const server = http.createServer(app);
+
+// Configure Socket.IO with CORS enabled
 const io = new Server(server, {
     cors: {
-        origin: "*", // Allow all origins, will be changed to talk.vercel later soon. 
+        origin: "*", // Allow all origins
         methods: ["GET", "POST"]
     }
 });
@@ -61,6 +74,7 @@ io.on('connection', (socket) => {
 });
 
 // Start the server
-server.listen(8080, () => {
-    console.log('Server listening on port 8080');
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
 });

@@ -119,9 +119,13 @@
         document.body.appendChild(statusDiv);
         
         //Initialize Socket.IO connection 
-        //talk-n-watch.vercel.app
-        //http://localhost:8080
-        socket = io("talk-n-watch.vercel.app", { //change this later to connect to our actual server
+        // Automatically detect the host
+        const socketHost = window.location.hostname === 'localhost' 
+          ? 'http://localhost:8080' 
+          : window.location.origin;
+          
+        console.log(`Connecting to Socket.IO server at: ${socketHost}`);
+        socket = io(socketHost, {
           reconnectionAttempts: 5,
           timeout: 10000,
           transports: ['websocket', 'polling']
