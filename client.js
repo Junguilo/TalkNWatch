@@ -118,8 +118,10 @@
         statusDiv.textContent = 'Connecting to server...';
         document.body.appendChild(statusDiv);
         
-        //Initialize Socket.IO connection
-        socket = io("http://localhost:8080", { //change this later to connect to our actual server
+        //Initialize Socket.IO connection 
+        //talk-n-watch.vercel.app
+        //http://localhost:8080
+        socket = io("talk-n-watch.vercel.app", { //change this later to connect to our actual server
           reconnectionAttempts: 5,
           timeout: 10000,
           transports: ['websocket', 'polling']
