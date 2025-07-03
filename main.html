@@ -3,6 +3,7 @@
   <body>
     <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
     <!-- <div id="player"></div> --> <!-- YT API -->
+    <div id="player"></div>
 
     <button onClick="getCurrTime()"> check Time </button>
     <div id="textTime">test</div>
@@ -13,83 +14,40 @@
       <button onClick="changeTime()"> changeTime to 8:20</button>
     </form>
 
+    <!-- API Libraries -->
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-youtube/dist/Youtube.min.js"></script>
+
+    <!-- Video Player CSS-->
+    <link href="https://unpkg.com/video.js@7/dist/video-js.min.css" rel="stylesheet">
+
     <script>
-      // YT API LEARNING
-      // // 2. This code loads the IFrame Player API code asynchronously.
-      // var tag = document.createElement('script');
+      //VIDEO JS Learning
+      // Create <video> element
+      const tag = document.createElement('video');
+      tag.id = 'myVideo';
+      tag.className = 'video-js vjs-default-skin';
+      tag.setAttribute('controls', true);
+      tag.setAttribute('width', 640);
+      tag.setAttribute('height', 360);
 
-      // tag.src = "https://www.youtube.com/iframe_api";
-      // var firstScriptTag = document.getElementsByTagName('script')[0];
-      // firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      // Add to DOM
+      document.getElementById('player').appendChild(tag);
 
-      // // 3. This function creates an <iframe> (and YouTube player)
-      // //    after the API code downloads.
-      // var player;
-      // function onYouTubeIframeAPIReady() {
-      //   player = new YT.Player('player', {
-      //     height: '390',
-      //     width: '640',
-      //     videoId: 'M7lc1UVf-VE',
-      //     playerVars: {
-      //       'playsinline': 1
-      //     },
-      //     events: {
-      //       'onReady': onPlayerReady,
-      //       //'onStateChange': onPlayerStateChange
-      //     },
-      //     // playerVars:{
-      //     //     start: 55, //uses seconds for the video
-      //     //     end: 60 //ends the video
-      //     // }
-      //   });
-      // }
+      // Initialize Video.js
+      const player = videojs('myVideo', {
+        techOrder: ['youtube'],
+        sources: [{
+          type: 'video/youtube',
+          src: 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
+        }],
+        youtube: {
+          modestbranding: 1,
+          rel: 0
+        }
+      });
 
-      // // 4. The API will call this function when the video player is ready.
-      // function onPlayerReady(event) {
-      //   event.target.playVideo();
-      // }
-
-      // // 5. The API calls this function when the player's state changes.
-      // //    The function indicates that when playing a video (state=1),
-      // //    the player should play for six seconds and then stop.
-      // var done = false;
-      // function onPlayerStateChange(event) {
-      //   //we want to get the 
-
-
-      //   //stops the yt player when it hits 0:06 or over that. 
-      //   // if (event.data == YT.PlayerState.PLAYING && !done) {
-      //   //   setTimeout(stopVideo, 6000);
-      //   //   done = true;
-      //   // }
-      // }
-
-      // function stopVideo() {
-      //   player.stopVideo();
-      //   done = false;
-      // }
-      
-
-      // //USER MADE FUNCTIONS
-      // //gets the current time of the video
-      // function getCurrTime(){
-      //   document.getElementById("textTime").innerHTML = player.getCurrentTime();
-      //   console.log( player.getCurrentTime());
-      //   //document.getElementById("textTime").innerHTML = player.playerInfo.currentTime;
-      //   //console.log( player.playerInfo.currentTime);
-      // }
-
-      // function changeTime(event){
-      //   event.preventDefault();
-      //   const input = document.getElementById("timeInput").value;
-      //   const seconds = parseFloat(input);
-      //   if(!isNaN(seconds)){
-      //     player.seekTo(seconds, true);
-      //   }
-      //   //player.seekTo(500, true);
-      // }
-
-      // SOCKET.IO
+      // SOCKET.IO + video player event Listener at the very bottom
       // Add Socket.IO client script
       var socketScript = document.createElement('script');
       socketScript.src = "https://cdn.socket.io/4.7.4/socket.io.min.js";
@@ -161,7 +119,7 @@
           statusDiv.style.color = 'red';
         });
         
-        // Add button to send test messages
+        // Add button to send test messages, a way to create a function through here
         const sendButton = document.createElement('button');
         sendButton.textContent = "Send Test Message";
         sendButton.onclick = function() {
@@ -177,6 +135,34 @@
           console.log("Sent message:", message);
         };
         document.body.appendChild(sendButton);
+
+        //VIDEO PLAYER HERE
+        player.ready(() => {
+          console.log('Player is ready');
+
+          player.on('play', () => {
+            const msg = "Video is Playing from " + player.currentTime();
+            //console.log("Emitting playVideo event:", msg);
+            socket.emit("play", msg);
+          });
+
+          player.on('pause', () => {
+            //console.log('Paused')
+            const msg = "Video is Paused from " + player.currentTime();
+            socket.emit("pause", msg)
+          });
+          
+          let lastTime = 0;
+          player.on('timeupdate', ()=>{
+            const current = player.currentTime();
+            if(Math.abs(current - lastTime) > 2){
+              const msg = `Jumped from ${lastTime.toFixed(2)} to ${current.toFixed(2)}`;
+              socket.emit("timeUpdate", msg);
+              console.log(msg);
+            }
+            lastTime = current;
+          });
+        });
       };
 
 

@@ -22,11 +22,26 @@ io.on('connection', (socket) => {
         console.log(`Received message from ${socket.id}: ${msg}`);
         
         // Broadcast message to all clients, with the use of io.emit
+        //remember that io emit will allow you to see the console messages
         io.emit('broadcast', msg);
         console.log("Broadcasted message to all clients");
     });
     
     //socket.on('changeTime', ())
+
+    //handlePlay from frontend
+    socket.on('play', (msg) => {
+        console.log(`Received playVideo from ${socket.id}: ${msg}`);
+    });
+
+    //handlePause from frontend
+    socket.on('pause', (msg) => {
+        console.log(`received pauseVideo from ${socket.id}: ${msg}`);
+    });
+
+    socket.on('timeUpdate', (msg) => {
+        console.log(msg);
+    })
 
     // Handle errors
     socket.on('error', (error) => { //on receives data
