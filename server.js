@@ -27,20 +27,26 @@ io.on('connection', (socket) => {
         console.log("Broadcasted message to all clients");
     });
     
-    //socket.on('changeTime', ())
+    socket.on('changeVideo', (link) => {
+        console.log(link);
+        io.emit('changeBroadcastVideo', link);
+    });
 
     //handlePlay from frontend
     socket.on('play', (msg) => {
         console.log(`Received playVideo from ${socket.id}: ${msg}`);
+        io.emit('changeBroadcastPlay');
     });
 
     //handlePause from frontend
     socket.on('pause', (msg) => {
         console.log(`received pauseVideo from ${socket.id}: ${msg}`);
+        io.emit('changeBroadcastPause');
     });
 
-    socket.on('timeUpdate', (msg) => {
-        console.log(msg);
+    socket.on('timeUpdate', (time) => {
+        console.log(time);
+        io.emit('changeBroadcastSeek', time);
     })
 
     // Handle errors
