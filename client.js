@@ -32,7 +32,7 @@
         }
       };
 
-    
+      //CHANGE THE VIDEO FUNCTIONS
       function changeVideoEvent(){
         let videoUrl = document.forms["videoChange"]["videoName"].value;
 
@@ -102,6 +102,18 @@
         });
       }
 
+      //submit message and broadcast
+      function broadcastMessage(){
+        let msg = document.forms["messageSubmit"]["messageText"].value;
+        console.log(msg);
+        socket.emit('sendMessage', msg);
+
+        document.forms["messageSubmit"]["messageText"].value = '';
+
+        return false;
+      }
+
+
       // SOCKET.IO + video player event Listener at the very bottom
       //Add Socket.IO client script
       var socketScript = document.createElement('script');
@@ -155,6 +167,12 @@
           const messageDiv = document.createElement('div');
           messageDiv.textContent = "Broadcast: " + data;
           document.body.appendChild(messageDiv);
+        });
+
+        socket.on("sendMessage", (msg) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = msg;
+            document.body.appendChild(messageDiv);
         });
         
         //Handle connection errors

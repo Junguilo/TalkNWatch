@@ -42,6 +42,12 @@ io.on('connection', (socket) => {
         console.log("Broadcasted message to all clients");
     });
     
+    socket.on('sendMessage', (msg) => {
+        const message = `${socket.id}: ${msg}`
+        io.emit('sendMessage', message);
+
+    });
+
     socket.on('changeVideo', (link) => {
         console.log(link);
         io.emit('changeBroadcastVideo', link);
@@ -51,12 +57,14 @@ io.on('connection', (socket) => {
     socket.on('play', (msg) => {
         console.log(`Received playVideo from ${socket.id}: ${msg}`);
         io.emit('changeBroadcastPlay');
+        io.emit('sendMessage', `${socket.id} has played the video.`);
     });
 
     //handlePause from frontend
     socket.on('pause', (msg) => {
         console.log(`received pauseVideo from ${socket.id}: ${msg}`);
         io.emit('changeBroadcastPause');
+        io.emit('sendMessage', `${socket.id} has paused the video.`);
     });
 
     socket.on('timeUpdate', (time) => {

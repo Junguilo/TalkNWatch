@@ -13,9 +13,9 @@
 
     <div id="textChat">
       <div>
-          <form>
-            <input type="text" name="message">
-            <input type="submit" value="submit">
+          <form name="messageSubmit" onsubmit="return broadcastMessage()" method="get">
+            <input type="text" name="messageText">
+            <input type="submit" value="Submit">
           </form>
       </div>
     </div>
