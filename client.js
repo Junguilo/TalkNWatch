@@ -8,10 +8,10 @@
       tag.setAttribute('width', 640);
       tag.setAttribute('height', 360);
 
-      // Add to DOM
+      //Add to DOM
       document.getElementById('player').appendChild(tag);
 
-      // Initialize Video.js
+      //Initialize Video.js
       const player = videojs('myVideo', {
         techOrder: ['youtube'],
         sources: [{
@@ -52,16 +52,16 @@
           src: vid
         });
         
-        // Force thumbnail/poster update
+        //Force thumbnail/poster update
         player.poster('');  // Clear existing poster
         
-        // Load the new source
+        //Load the new source
         player.load();
         
         //play the video once the user changes it
         player.play();
         
-        // Prevent form submission to avoid page reload
+        //Prevent form submission to avoid page reload
         return false;
       }
 
@@ -120,9 +120,7 @@
         
         //Initialize Socket.IO connection 
         // Automatically detect the host
-        const socketHost = window.location.hostname === 'localhost' 
-          ? 'http://localhost:8080' 
-          : window.location.origin;
+        const socketHost = 'http://localhost:8080';
           
         console.log(`Connecting to Socket.IO server at: ${socketHost}`);
         socket = io(socketHost, {
@@ -137,7 +135,7 @@
           statusDiv.textContent = 'Connected to server';
           statusDiv.style.color = 'green';
           
-          // Send a test message
+          //Send a test message
           socket.emit("message", "Connection established");
         });
         
@@ -173,21 +171,21 @@
           statusDiv.style.color = 'orange';
         });
         
-        // Listen for any errors
+        //Listen for any errors
         socket.on("error", (error) => {
           console.error("Socket error:", error);
           statusDiv.textContent = 'Socket error';
           statusDiv.style.color = 'red';
         });
         
-        // Add button to send test messages, a way to create a function through here
+        //Add button to send test messages, a way to create a function through here
         const sendButton = document.createElement('button');
         sendButton.textContent = "Send Test Message";
         sendButton.onclick = function() {
           const message = "Test message from client at " + new Date().toLocaleTimeString();
           socket.emit("message", message);
           
-          // Visual feedback that message was sent
+          //Visual feedback that message was sent
           const sentDiv = document.createElement('div');
           sentDiv.textContent = "Sent: " + message;
           sentDiv.style.color = 'blue';
@@ -198,8 +196,8 @@
         document.body.appendChild(sendButton);
         
         //when the video has been changed, 
-        // this will be broadcasted to everyone to change the video
-        // gotta work on it working in rooms later, but this is good to see how it works
+        //this will be broadcasted to everyone to change the video
+        //gotta work on it working in rooms later, but this is good to see how it works
         socket.on("changeBroadcastVideo", (videoLink) => {
           changeVideo(videoLink);
         })

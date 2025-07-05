@@ -5,7 +5,8 @@ const app = express();
 const { Server } = require("socket.io");
 
 // Serve static files
-app.use(express.static(__dirname));
+//app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')))
 
 // Route to serve main page
 app.get('/', (req, res) => {
@@ -17,8 +18,9 @@ const server = http.createServer(app);
 // Configure Socket.IO with CORS enabled
 const io = new Server(server, {
     cors: {
-        origin: "*", // Allow all origins
-        methods: ["GET", "POST"]
+        origin: ["http://localhost:5500", "http://127.0.0.1:5500", "*"], // Allow Live Server origins
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
@@ -71,6 +73,10 @@ io.on('connection', (socket) => {
     socket.on('disconnect', (reason) => {
         console.log(`Client disconnected: ${socket.id}, reason: ${reason}`);
     });
+});
+
+app.get('/status', (req, res) => {
+  res.status(200).send('Server is running');
 });
 
 // Start the server
