@@ -1,4 +1,10 @@
- var socket; //global socket variable
+      var socket; //global socket variable
+
+      // Add these flags to track programmatic play/pause events
+      let ignoreNextPlayEvent = false;
+      let ignoreNextPauseEvent = false;
+      let ignoreNextSeekEvent = false;
+
       //VIDEO JS Learning
       // Create <video> element
       const tag = document.createElement('video');
@@ -77,27 +83,71 @@
           console.log('Player is ready');
 
           player.on('play', () => {
-            const msg = "Video is Playing from " + player.currentTime();
+            //emit when the event wasn't triggered by a socket
             //console.log("Emitting playVideo event:", msg);
-            socket.emit("play", msg);
+
+            if(!player.seeking() && !ignoreNextPlayEvent){
+              const msg = "Video is Playing from " + player.currentTime();
+              socket.emit("play", {
+                id: socket.id,
+                message: msg,
+                original: true
+              });
+            }
+            
+            // Reset the flag after handling the event
+            ignoreNextPlayEvent = false;
+                
           });
 
           player.on('pause', () => {
             //console.log('Paused')
-            const msg = "Video is Paused from " + player.currentTime();
-            socket.emit("pause", msg)
+            if (!ignoreNextPauseEvent) {
+              const msg = "Video is Paused from " + player.currentTime();
+              socket.emit("pause", {
+                id: socket.id,
+                message: msg,
+                original: true 
+              });
+            }
+            
+            // Reset the flag after handling the event
+            ignoreNextPauseEvent = false;
+            
+              // const messageDiv = document.createElement('div');
+              // messageDiv.textContent = "You have paused the video";
+              // document.body.appendChild(messageDiv);
+
           });
           
+              // Replace timeupdate with seeked for seek operations
           let lastTime = 0;
-          player.on('timeupdate', ()=>{
-            const current = player.currentTime();
-            if(Math.abs(current - lastTime) > 2){
-              const msg = `Jumped from ${lastTime.toFixed(2)} to ${current.toFixed(2)}`;
-              const time = current;
-              socket.emit("timeUpdate", time);
-              console.log(msg);
+          
+          // Track time continuously but don't emit events
+          player.on('timeupdate', () => {
+            if (!player.seeking()) {
+              lastTime = player.currentTime();
             }
-            lastTime = current;
+          });
+
+          player.on('seeked', ()=>{
+            const current = player.currentTime();
+            if(!ignoreNextSeekEvent){
+              if(Math.abs(current - lastTime) > 2){
+                const msg = `Jumped from ${lastTime.toFixed(2)} to ${current.toFixed(2)}`;
+                const time = current;
+                socket.emit("timeUpdate", {
+                  original: lastTime.toFixed(2),
+                  current: time,
+                  id: socket.id
+                });
+                console.log(msg);
+              }
+              lastTime = current;
+            }
+            console.log('going back to false');
+            ignoreNextSeekEvent = false;
+
           });
         });
       }
@@ -221,14 +271,19 @@
         })
 
         socket.on("changeBroadcastPause", () => {
+          ignoreNextPauseEvent = true;
           player.pause();
         });
 
         socket.on("changeBroadcastPlay", () => {
+          ignoreNextPlayEvent = true;
+          console.log("Receiving remote play command");
           player.play();
         });
 
         socket.on("changeBroadcastSeek", (time) => {
+          console.log('going to true');
+          ignoreNextSeekEvent = true;
           player.currentTime(time);
         });
 

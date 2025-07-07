@@ -24,6 +24,8 @@ const io = new Server(server, {
     }
 });
 
+var suppressEvent = false; //change this to rooms later on
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log("New client connected", socket.id);
@@ -45,8 +47,12 @@ io.on('connection', (socket) => {
     socket.on('sendMessage', (msg) => {
         const message = `${socket.id}: ${msg}`
         io.emit('sendMessage', message);
-
     });
+
+    socket.on('sendSystemMessage', (msg) => {
+        const message = `${msg}`
+        io.emit('sendMessage', message);
+    })
 
     socket.on('changeVideo', (link) => {
         console.log(link);
@@ -55,22 +61,41 @@ io.on('connection', (socket) => {
 
     //handlePlay from frontend
     socket.on('play', (msg) => {
-        console.log(`Received playVideo from ${socket.id}: ${msg}`);
-        io.emit('changeBroadcastPlay');
+        console.log(`Received playVideo from ${socket.id}: ${msg.message}`);
+
+        // Send a single system message to ALL clients
         io.emit('sendMessage', `${socket.id} has played the video.`);
+
+        // Tell other clients to play (without sending messages)
+        socket.broadcast.emit('changeBroadcastPlay', {
+            id: socket.id,
+            message: msg.message,
+            original: false
+        });
+
     });
 
     //handlePause from frontend
     socket.on('pause', (msg) => {
-        console.log(`received pauseVideo from ${socket.id}: ${msg}`);
-        io.emit('changeBroadcastPause');
+        console.log(`Received pauseVideo from ${socket.id}: ${msg.message}`);
+        
+        // Send a single message to ALL clients
         io.emit('sendMessage', `${socket.id} has paused the video.`);
+        
+        // Tell other clients to pause (without sending additional messages)
+        socket.broadcast.emit('changeBroadcastPause', {
+            id: socket.id,
+            message: msg.message,
+            original: false
+        });
     });
 
     socket.on('timeUpdate', (time) => {
-        console.log(time);
-        io.emit('changeBroadcastSeek', time);
-    })
+        //console.log(time);
+        
+        io.emit('sendMessage', `${socket.id} has moved the video from ${time.original} to ${time.current}`);
+        socket.broadcast.emit('changeBroadcastSeek', time.current);
+    });
 
     // Handle errors
     socket.on('error', (error) => { //on receives data
