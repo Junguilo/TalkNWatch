@@ -168,8 +168,10 @@
         document.body.appendChild(statusDiv);
         
         //Initialize Socket.IO connection 
-        // Automatically detect the host
-        const socketHost = 'http://localhost:8080';
+        // Automatically detect the host - works both locally and in production
+        const socketHost = window.location.hostname === 'localhost' 
+          ? 'http://localhost:8080' 
+          : window.location.origin;
           
         console.log(`Connecting to Socket.IO server at: ${socketHost}`);
         socket = io(socketHost, {

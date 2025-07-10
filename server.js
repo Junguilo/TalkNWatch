@@ -5,12 +5,15 @@ const app = express();
 const { Server } = require("socket.io");
 
 // Serve static files
-//app.use(express.static(__dirname));
-app.use(express.static(path.join(__dirname, 'public')))
+app.use(express.static(__dirname));
 
-// Route to serve main page
+// Routes to serve pages
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/main', (req, res) => {
+    res.sendFile(path.join(__dirname, 'main.html'));
 });
 
 const server = http.createServer(app);
@@ -18,7 +21,12 @@ const server = http.createServer(app);
 // Configure Socket.IO with CORS enabled
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5500", "http://127.0.0.1:5500", "*"], // Allow Live Server origins
+        origin: [
+            "http://localhost:5500", 
+            "http://127.0.0.1:5500", 
+            "https://talknwatch.onrender.com",
+            "*" // Allow connections from any origin (you can restrict this later)
+        ],
         methods: ["GET", "POST"],
         credentials: true
     }
@@ -110,6 +118,6 @@ app.get('/status', (req, res) => {
 
 // Start the server
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
 });
