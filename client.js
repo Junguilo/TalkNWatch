@@ -4,6 +4,7 @@
       let ignoreNextPlayEvent = false;
       let ignoreNextPauseEvent = false;
       let ignoreNextSeekEvent = false;
+      let ignoreChangeVideoEvent = false;
 
       //VIDEO JS Learning
       // Create <video> element
@@ -121,33 +122,19 @@
           });
           
               // Replace timeupdate with seeked for seek operations
-          let lastTime = 0;
+          //let lastTime = 0;
           
           // Track time continuously but don't emit events
-          player.on('timeupdate', () => {
-            if (!player.seeking()) {
-              lastTime = player.currentTime();
-            }
-          });
-
-          player.on('seeked', ()=>{
+          let lastTime = 0;
+          player.on('timeupdate', ()=>{
             const current = player.currentTime();
-            if(!ignoreNextSeekEvent){
-              if(Math.abs(current - lastTime) > 2){
-                const msg = `Jumped from ${lastTime.toFixed(2)} to ${current.toFixed(2)}`;
-                const time = current;
-                socket.emit("timeUpdate", {
-                  original: lastTime.toFixed(2),
-                  current: time,
-                  id: socket.id
-                });
-                console.log(msg);
-              }
-              lastTime = current;
+            if(Math.abs(current - lastTime) > 2){
+              const msg = `Jumped from ${lastTime.toFixed(2)} to ${current.toFixed(2)}`;
+              const time = current;
+              socket.emit("timeUpdate", time);
+              console.log(msg);
             }
-            console.log('going back to false');
-            ignoreNextSeekEvent = false;
-
+            lastTime = current;
           });
         });
       }

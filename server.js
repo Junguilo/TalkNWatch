@@ -49,13 +49,9 @@ io.on('connection', (socket) => {
         io.emit('sendMessage', message);
     });
 
-    socket.on('sendSystemMessage', (msg) => {
-        const message = `${msg}`
-        io.emit('sendMessage', message);
-    })
-
     socket.on('changeVideo', (link) => {
         console.log(link);
+        io.emit('sendMessage', `${socket.id} has changed the video.`);
         io.emit('changeBroadcastVideo', link);
     });
 
@@ -91,10 +87,10 @@ io.on('connection', (socket) => {
     });
 
     socket.on('timeUpdate', (time) => {
-        //console.log(time);
+        console.log('timeOrignal: ', time);
         
-        io.emit('sendMessage', `${socket.id} has moved the video from ${time.original} to ${time.current}`);
-        socket.broadcast.emit('changeBroadcastSeek', time.current);
+        //io.emit('sendMessage', `${socket.id} has moved the video to ${time}`);
+        socket.broadcast.emit('changeBroadcastSeek', time);
     });
 
     // Handle errors
