@@ -1,6 +1,10 @@
-      var socket; //global socket variable
+var socket; //global socket variable
 
-      // Add these flags to track programmatic play/pause events
+
+      //Getting the roomID
+      const roomId = window.location.pathname.split('/').pop();
+
+      // Improve flags to track programmatic play/pause events
       let ignoreNextPlayEvent = false;
       let ignoreNextPauseEvent = false;
       let ignoreNextSeekEvent = false;
@@ -45,7 +49,10 @@
 
         //change vid
         //changeVideo(videoUrl);
-        socket.emit('changeVideo', videoUrl);
+        socket.emit('changeVideo', {
+          room: roomId,
+          link: videoUrl
+        });
         return false;
       }
       
@@ -76,7 +83,10 @@
       //only the host should have this but honestly ill do that lateer. 
       function getCurrTime(){
         const time = player.currentTime();
-        socket.emit("timeUpdate", time);
+        socket.emit("timeUpdate", {
+          room: roomId,
+          time: time
+        });
       }
 
       function playerEvents(player, socket){
@@ -84,44 +94,44 @@
           console.log('Player is ready');
 
           player.on('play', () => {
-            //emit when the event wasn't triggered by a socket
-            //console.log("Emitting playVideo event:", msg);
-
-            if(!player.seeking() && !ignoreNextPlayEvent){
+            if(!ignoreNextPlayEvent){
               const msg = "Video is Playing from " + player.currentTime();
+              console.log("Emitting play event at time:", player.currentTime());
               socket.emit("play", {
+                room: roomId,
                 id: socket.id,
                 message: msg,
+                time: player.currentTime(),
                 original: true
               });
+            } else {
+              console.log("Ignoring play event (triggered programmatically)");
             }
             
             // Reset the flag after handling the event
             ignoreNextPlayEvent = false;
-                
           });
 
           player.on('pause', () => {
-            //console.log('Paused')
             if (!ignoreNextPauseEvent) {
               const msg = "Video is Paused from " + player.currentTime();
+              console.log("Emitting pause event at time:", player.currentTime());
               socket.emit("pause", {
+                room: roomId,
                 id: socket.id,
                 message: msg,
+                time: player.currentTime(),
                 original: true 
               });
+            } else {
+              console.log("Ignoring pause event (triggered programmatically)");
             }
             
             // Reset the flag after handling the event
             ignoreNextPauseEvent = false;
-            
-              // const messageDiv = document.createElement('div');
-              // messageDiv.textContent = "You have paused the video";
-              // document.body.appendChild(messageDiv);
-
           });
           
-              // Replace timeupdate with seeked for seek operations
+          // Replace timeupdate with seeked for seek operations
           //let lastTime = 0;
           
           // Track time continuously but don't emit events
@@ -131,7 +141,10 @@
             if(Math.abs(current - lastTime) > 2){
               const msg = `Jumped from ${lastTime.toFixed(2)} to ${current.toFixed(2)}`;
               const time = current;
-              socket.emit("timeUpdate", time);
+              socket.emit("timeUpdate", {
+                room: roomId,
+                time: time
+              });
               console.log(msg);
             }
             lastTime = current;
@@ -143,7 +156,10 @@
       function broadcastMessage(){
         let msg = document.forms["messageSubmit"]["messageText"].value;
         console.log(msg);
-        socket.emit('sendMessage', msg);
+        socket.emit('sendMessage', {
+          room: roomId,
+          msg: msg
+        });
 
         document.forms["messageSubmit"]["messageText"].value = '';
 
@@ -180,6 +196,7 @@
           transports: ['websocket', 'polling']
         });
         
+
         //Connection established
         socket.on("connect", () => {
           console.log("Connected to Socket.IO server with ID:", socket.id);
@@ -187,9 +204,15 @@
           statusDiv.style.color = 'green';
           
           //Send a test message
-          socket.emit("message", "Connection established");
+          socket.emit("message", {
+            room: roomId,
+            msg: "Connection Established in " + roomId
+          });
         });
         
+        //Join Specific Room Through Link
+        socket.emit('join-room', roomId);
+
         //Receive server signal
         socket.on("signal", (data) => {
           console.log("Server signal:", data);
@@ -240,7 +263,10 @@
         sendButton.textContent = "Send Test Message";
         sendButton.onclick = function() {
           const message = "Test message from client at " + new Date().toLocaleTimeString();
-          socket.emit("message", message);
+          socket.emit("message", {
+            room: roomId,
+            msg: message
+          });
           
           //Visual feedback that message was sent
           const sentDiv = document.createElement('div');
@@ -252,26 +278,27 @@
         };
         document.body.appendChild(sendButton);
         
-        //when the video has been changed, 
-        //this will be broadcasted to everyone to change the video
-        //gotta work on it working in rooms later, but this is good to see how it works
+        // Improved event handlers for video synchronization
         socket.on("changeBroadcastVideo", (videoLink) => {
           changeVideo(videoLink);
-        })
+        });
 
-        socket.on("changeBroadcastPause", () => {
+        socket.on("changeBroadcastPause", (data) => {
+          console.log("Received pause command from server at time:", data.time);
           ignoreNextPauseEvent = true;
+          player.currentTime(data.time);
           player.pause();
         });
 
-        socket.on("changeBroadcastPlay", () => {
+        socket.on("changeBroadcastPlay", (data) => {
+          console.log("Received play command from server at time:", data.time);
           ignoreNextPlayEvent = true;
-          console.log("Receiving remote play command");
+          player.currentTime(data.time);
           player.play();
         });
 
         socket.on("changeBroadcastSeek", (time) => {
-          console.log('going to true');
+          console.log('Seeking to time:', time);
           ignoreNextSeekEvent = true;
           player.currentTime(time);
         });
