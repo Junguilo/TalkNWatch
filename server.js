@@ -10,6 +10,7 @@ app.use(express.static(__dirname));
 
 // Routes to serve pages
 app.get('/', (req, res) => {
+    console.log("test");
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
