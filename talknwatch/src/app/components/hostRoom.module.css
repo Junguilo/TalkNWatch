@@ -1,0 +1,28 @@
+.hostRoomBody {
+    height: 300px;
+    width: 500px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* vertical centering */
+    align-items: center;     /* horizontal centering */
+    border-radius: 10px;
+    background-color: #f4e9cd;
+    gap: 12px; /* vertical space between flex children */
+    box-shadow: 0 5px 5px 0 #031926;
+}
+
+.hostRoomBody button{
+    background-color: #9dbebb;
+    border: none;
+    color: black;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 20px;
+    cursor: pointer;
+    transition-duration: 0.2s;
+}
+
+.hostRoomBody button:hover{
+    background-color: #77aca2;
+    box-shadow: 0 2px 0px 0 #031926;
+}
