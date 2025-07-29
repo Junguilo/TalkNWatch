@@ -3,11 +3,11 @@
     width: 500px;
     display: flex;
     flex-direction: column;
-    justify-content: center; /* vertical centering */
-    align-items: center;     /* horizontal centering */
+    justify-content: center; 
+    align-items: center;    
     border-radius: 10px;
     background-color: #f4e9cd;
-    gap: 12px; /* vertical space between flex children */
+    gap: 12px;
     box-shadow: 0 5px 5px 0 #031926;
 }
 

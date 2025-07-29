@@ -29,8 +29,8 @@ export default function VideoPlayer({ roomID, socket, setPlayer }) {
     tag.id = 'myVideo'
     tag.className = 'video-js vjs-default-skin'
     tag.setAttribute('controls', true)
-    tag.setAttribute('width', 640)
-    tag.setAttribute('height', 360)
+    tag.setAttribute('width', '1000')
+    tag.setAttribute('height', '800')
 
     // Add to DOM
     if (playerContainerRef.current) {
