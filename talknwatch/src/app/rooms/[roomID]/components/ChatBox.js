@@ -8,9 +8,38 @@ export default function ChatBox({ roomID, socket, onSendMessage }) {
   const [messages, setMessages] = useState([])
   const inputRef = useRef(null)
   const messageListRef = useRef(null) // Add this ref for the message list
+  
+  //settings modal
   const nameRef = useRef(null)
+  const dialogRef = useRef(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
+  //open/close dialog functions
+  const openDialog = () => {
+    dialogRef.current?.showModal()
+    setIsDialogOpen(true)
+  }
 
+  // Fix the missing parameter in closeDialog
+  const closeDialog = (e) => {
+    if (e) {
+      e.preventDefault();
+    }
+    dialogRef.current?.close();
+    setIsDialogOpen(false);
+  }
+  
+  const handleSettingsSubmit = (e) => {
+    e.preventDefault()
+    //saveName
+    if(nameRef.current?.value){
+      console.log("Name changed to:", nameRef.current.value)
+      //send the name to the server later
+    }
+    closeDialog(e)
+  }
+
+  //chat Functions
   const scrollToBottom = () => {
     if (messageListRef.current) {
       messageListRef.current?.scrollIntoView({behavior: "smooth"});
@@ -46,10 +75,6 @@ export default function ChatBox({ roomID, socket, onSendMessage }) {
     }
     return false
   }
-  
-  // const showSettingsModal = () => {
-
-  // };
 
   return (
     <div className={styles.chatRoomBody}>
@@ -84,7 +109,10 @@ export default function ChatBox({ roomID, socket, onSendMessage }) {
       </div>
 
       <div className={styles.footer}>
-        <button className={styles.iconButton}>
+        <button 
+          className={styles.iconButton}
+          onClick={openDialog}
+          >
           <Image 
             src="/Icons/settings-3110.svg"
             alt="Settings" 
@@ -94,17 +122,33 @@ export default function ChatBox({ roomID, socket, onSendMessage }) {
         </button>
       </div>
 
-      <dialog>
-          <form>
-              <input
-                type="text"
-                ref={nameRef}
-                placeholder="Enter Name Here..."
-                />
-                <button type="submit">Send</button>
-                <button>Close</button>
-          </form>
+      <dialog ref={dialogRef} className={styles.modal}>
+        <h3>Settings</h3>
+        <form onSubmit={handleSettingsSubmit} className={styles.settingsForm} autoComplete="off">
+          <div className={styles.formGroup}>
+            <label htmlFor="username">Display Name:</label>
+            <input
+              id="username"
+              type="text"
+              ref={nameRef}
+              placeholder="Enter your name..."
+              autoComplete="off"
+            />
+          </div>
+          
+          <div className={styles.modalButtons}>
+            <button type="submit" className={styles.primaryButton}>Save</button>
+            <button 
+              type="button" 
+              onClick={closeDialog} 
+              className={styles.secondaryButton}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       </dialog>
+
     </div>
   )
 }

@@ -7,7 +7,7 @@
         "header header header"
         "form video chat"
         "footer footer footer";
-    grid-template-columns: 0.5fr 2fr 0.7fr;  
+    grid-template-columns: 0.2fr 2fr 0.7fr;  
     grid-template-rows: auto 1fr auto;  
     gap: 10px;
     padding: 15px;
@@ -32,6 +32,11 @@
     background-color: #468189;
     padding: 10px;
     border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;  /* Important for Grid layouts to allow child to expand */
+    height: 100%;   /* Take all available space in the grid cell */
 }
 
 .chatContainer{

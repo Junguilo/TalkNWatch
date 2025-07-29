@@ -1,0 +1,84 @@
+
+.playerContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.videoWrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+
+.unmuteModal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+.unmuteModal h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.unmuteModal p {
+  margin-bottom: 30px;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+.unmuteButton {
+  background-color: #9dbebb;
+  color: black;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.3s;
+}
+
+.unmuteButton:hover {
+  background-color: #77aca2;
+}
+
+.iconWrapper {
+  margin-right: 10px;
+  font-size: 20px;
+}
+
+/* Make video.js fit container properly */
+/* Use regular selectors instead of :global for better compatibility */
+.videoWrapper :global(.video-js) {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.videoWrapper :global(.vjs-tech) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}

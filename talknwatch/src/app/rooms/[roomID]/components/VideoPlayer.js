@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useRef, useState } from 'react'
 import Script from 'next/script'
+import styles from './VideoPlayer.module.css'
 
 export default function VideoPlayer({ roomID, socket, setPlayer }) {
   const playerContainerRef = useRef(null)
@@ -8,8 +9,11 @@ export default function VideoPlayer({ roomID, socket, setPlayer }) {
   const [playerReady, setPlayerReady] = useState(false)
   const playerRef = useRef(null)
   
-  // IMPORTANT: Define flags at component level using refs so they're accessible
-  // to both incoming and outgoing event handlers
+  // Add state for unmute modal
+  const [showUnmuteModal, setShowUnmuteModal] = useState(true)
+  const [hasInteracted, setHasInteracted] = useState(false)
+  
+  //flags for client, so we don't get stuck in a feedback loop
   const ignoreNextPlayEvent = useRef(false)
   const ignoreNextPauseEvent = useRef(false)
   const ignoreNextSeekEvent = useRef(false)
@@ -19,72 +23,90 @@ export default function VideoPlayer({ roomID, socket, setPlayer }) {
   const handleScriptsLoaded = () => {
     setScriptsLoaded(true)
   }
+  
+  // Handle unmute button click
+  const handleUnmuteClick = () => {
+    setShowUnmuteModal(false)
+    setHasInteracted(true)
+    
+    // If the player is already initialized, unmute it
+    if (playerRef.current) {
+      playerRef.current.muted(false)
+      playerRef.current.volume(1)
+    }
+  }
 
   // Initialize player when component mounts and scripts are loaded
   useEffect(() => {
+    // Wait for scripts to load
     if (!scriptsLoaded || typeof window === 'undefined' || !window.videojs) return;
-
-    // Create <video> element
-    const tag = document.createElement('video')
-    tag.id = 'myVideo'
-    tag.className = 'video-js vjs-default-skin'
-    tag.setAttribute('controls', true)
-    tag.setAttribute('width', '1000')
-    tag.setAttribute('height', '800')
-
-    // Add to DOM
-    if (playerContainerRef.current) {
-      // Clear any existing content
-      playerContainerRef.current.innerHTML = ''
-      playerContainerRef.current.appendChild(tag)
     
-      try {
-        // Initialize Video.js
-        const player = window.videojs('myVideo', {
-          techOrder: ['youtube'],
-          sources: [{
-            type: 'video/youtube',
-            src: 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
-          }],
-          youtube: {
-            modestbranding: 1,
-            rel: 0
-          }
-        })
+    let player;
+    
+    const initializePlayer = () => {
+      // Create <video> element
+      const tag = document.createElement('video')
+      tag.id = 'myVideo'
+      tag.className = 'video-js vjs-default-skin vjs-big-play-centered'
+      tag.setAttribute('controls', true)
+      tag.setAttribute('width', '100%')
+      tag.setAttribute('height', '100%')
+      tag.setAttribute('muted', !hasInteracted) // Start muted if user hasn't interacted yet
+      
+      // Add to DOM
+      if (playerContainerRef.current) {
+        // Clear any existing content
+        playerContainerRef.current.innerHTML = ''
+        playerContainerRef.current.appendChild(tag)
         
-        console.log('Video.js player initialized')
-        
-        // Store player instance
-        playerRef.current = player
-        setPlayer(player)
-        setPlayerReady(true)
-        
-        // Setup player event listeners for outgoing events
-        // Pass the shared flag refs to both handler setups
-        setupPlayerEvents(player, socket, roomID, ignoreNextPlayEvent, ignoreNextPauseEvent)
-        
-        // Cleanup on unmount
-        return () => {
-          if (player) {
-            console.log('Disposing player')
-            player.dispose()
-          }
+        try {
+          // Initialize Video.js with enhanced options
+          player = window.videojs('myVideo', {
+            techOrder: ['youtube'],
+            sources: [{
+              type: 'video/youtube',
+              src: 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
+            }],
+            youtube: {
+              modestbranding: 1,
+              rel: 0,
+              playerVars: {
+                autoplay: hasInteracted ? 1 : 0, // Only autoplay if user has interacted
+                mute: hasInteracted ? 0 : 1,     // Start muted if no interaction
+              }
+            },
+            fill: true,           // Fill parent container
+            responsive: true,
+            aspectRatio: '16:9',  // Maintain aspect ratio
+            fluid: true,          // Make the player scalable
+            //playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2]  // Add playback speed controls
+          })
+          
+          console.log('Video.js player initialized')
+          
+          // Store player instance
+          playerRef.current = player
+          setPlayer(player)
+          setPlayerReady(true)
+          
+          // Setup player event listeners for outgoing events
+          setupPlayerEvents(player, socket, roomID, ignoreNextPlayEvent, ignoreNextPauseEvent)
+          
+          return player;
+        } catch (error) {
+          console.error('Error initializing player:', error)
         }
-      } catch (error) {
-        console.error('Error initializing player:', error)
       }
-    }
-  }, [roomID, socket, setPlayer, scriptsLoaded])
-
-  // Set up socket listeners for incoming events ONLY WHEN we have both socket and player
-  useEffect(() => {
-    if (!socket || !playerReady || !playerRef.current) {
-      console.log('Not setting up socket handlers yet - waiting for prerequisites')
-      return
+      return null;
     }
     
-    console.log('Setting up socket event handlers for incoming events')
-    const player = playerRef.current
+    // Initialize the player
+    player = initializePlayer();
+    
+    // Setup socket handlers if we have both socket and player
+    if (socket && player) {
+      console.log('Setting up socket event handlers for incoming events')
+    }
     
     // Handler for video change events from other users
     const handleVideoChange = (videoLink) => {
@@ -141,15 +163,15 @@ export default function VideoPlayer({ roomID, socket, setPlayer }) {
       player.pause()
     }
     
-    // Handler for seek events from other users
+    //Handler for seek events from other users
     const handleSeek = (time) => {
       console.log('Received changeBroadcastSeek event with time:', time)
       
-      // Set the flag to prevent re-emitting
+      //Set the flag to prevent re-emitting
       ignoreNextSeekEvent.current = true
       console.log('Set ignoreNextSeekEvent to true before remote seek')
       
-      // Seek to the time
+      //Seek to the time
       player.currentTime(time)
     }
     
@@ -161,15 +183,22 @@ export default function VideoPlayer({ roomID, socket, setPlayer }) {
     
     // Cleanup function to remove handlers when component unmounts
     return () => {
-      socket.off('changeBroadcastVideo', handleVideoChange)
-      socket.off('changeBroadcastPlay', handlePlay)
-      socket.off('changeBroadcastPause', handlePause)
-      socket.off('changeBroadcastSeek', handleSeek)
+      if (socket) {
+        socket.off('changeBroadcastVideo', handleVideoChange)
+        socket.off('changeBroadcastPlay', handlePlay)
+        socket.off('changeBroadcastPause', handlePause)
+        socket.off('changeBroadcastSeek', handleSeek)
+      }
+      
+      if (player) {
+        player.dispose()
+        playerRef.current = null
+      }
     }
   }, [socket, playerReady])
 
-  // Setup outgoing event handlers (when local user interacts with player)
-  // IMPORTANT: Accept the shared flag refs as parameters
+  //Setup outgoing event handlers (user interacts with player)
+ 
   function setupPlayerEvents(player, socket, roomID, ignorePlayFlag, ignorePauseFlag) {
     if (!player || !socket) return
     
@@ -210,7 +239,28 @@ export default function VideoPlayer({ roomID, socket, setPlayer }) {
         })
       })
       
-      // You can add more events here (seek, volume change, etc.)
+      // Add seek handler for better synchronization
+      let lastSeekTime = 0;
+      player.on('seeking', () => {
+        if (ignoreNextSeekEvent.current) {
+          console.log('Ignoring seek event (programmatic)')
+          ignoreNextSeekEvent.current = false
+          return
+        }
+        
+        const currentTime = player.currentTime();
+        
+        // Only emit seek events for significant jumps to reduce network traffic
+        if (Math.abs(currentTime - lastSeekTime) > 3) {
+          console.log('User initiated seek, emitting to room')
+          socket.emit('seek', {
+            room: roomID,
+            time: currentTime,
+            message: 'Video seeked'
+          })
+          lastSeekTime = currentTime
+        }
+      })
     })
   }
 
@@ -219,9 +269,26 @@ export default function VideoPlayer({ roomID, socket, setPlayer }) {
     if (!playerRef.current) return
     
     try {
+      // Extract video ID for better compatibility with YouTube links
+      let videoId = videoUrl;
+      
+      // Handle various YouTube URL formats
+      if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+        const urlObj = new URL(videoUrl);
+        
+        if (videoUrl.includes('youtube.com')) {
+          videoId = urlObj.searchParams.get('v');
+        } else if (videoUrl.includes('youtu.be')) {
+          videoId = urlObj.pathname.substring(1);
+        }
+        
+        // If we couldn't extract the ID, use the original URL
+        if (!videoId) videoId = videoUrl;
+      }
+      
       playerRef.current.src({
         type: 'video/youtube',
-        src: videoUrl
+        src: videoId.startsWith('http') ? videoId : `https://www.youtube.com/watch?v=${videoId}`
       })
       
       playerRef.current.load()
@@ -230,15 +297,46 @@ export default function VideoPlayer({ roomID, socket, setPlayer }) {
       ignoreNextPlayEvent.current = true
       console.log('Set ignoreNextPlayEvent to true before internal video change play')
       
+      // Handle play errors more gracefully
       playerRef.current.play()
+        .catch(error => {
+          console.error('Error playing video after change:', error)
+          // Reset flag if play fails
+          ignoreNextPlayEvent.current = false
+          // Show error to user
+          const errorOverlay = document.createElement('div');
+          errorOverlay.innerHTML = `<p>Error playing video. Autoplay may be blocked by your browser.</p>`;
+          errorOverlay.style = 'position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px;';
+          playerContainerRef.current.appendChild(errorOverlay);
+          
+          // Remove error after 5 seconds
+          setTimeout(() => {
+            errorOverlay.remove();
+          }, 5000);
+        });
     } catch (error) {
       console.error('Error changing video:', error)
     }
   }
 
   return (
-    <div>
-      <div id="player-container" ref={playerContainerRef}></div>
+    <div className={styles.playerContainer}>
+      <div className={styles.videoWrapper} id="player-container" ref={playerContainerRef}></div>
+      
+      {/* Unmute Modal */}
+      {showUnmuteModal && (
+        <div className={styles.unmuteModal}>
+          <h2>Enable Audio for TalkNWatch</h2>
+          <p>
+            To enjoy synchronized video watching with your friends, we need your permission to play audio.
+            Click the button below to enable audio and allow videos to autoplay when others start playback.
+          </p>
+          <button className={styles.unmuteButton} onClick={handleUnmuteClick}>
+            <span className={styles.iconWrapper}>🔊</span>
+            Enable Audio
+          </button>
+        </div>
+      )}
       
       {/* Load video.js dependencies */}
       <Script 
