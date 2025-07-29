@@ -1,0 +1,46 @@
+.roomContainer{
+    width: 100%;
+    min-height: 100vh;  /* Use viewport height instead of percentage */
+    background-color: wheat;
+    display: grid;
+    grid-template-areas:
+        "header header header"
+        "form video chat"
+        "footer footer footer";
+    grid-template-columns: 1fr 2fr 1fr;  /* Adjusted columns for better layout */
+    grid-template-rows: auto 1fr auto;   /* Make the middle row take available space */
+    gap: 10px;
+    padding: 15px;
+}
+
+.header{
+    grid-area: header;
+    background-color: #9dbebb;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.formContainer{
+    grid-area: form;
+    background-color: #77aca2;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.videoContainer{
+    grid-area: video;
+    background-color: #468189;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.chatContainer{
+    grid-area: chat;
+    background-color: #f4e9cd;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.footer{
+    grid-area: footer;
+}

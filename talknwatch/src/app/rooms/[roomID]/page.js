@@ -5,6 +5,7 @@ import VideoPlayer from './components/VideoPlayer'
 import VideoForm from './components/VideoForm'
 import ChatBox from './components/ChatBox'
 import useSocketSetup from './hooks/useSocketSetup'
+import styles from './room.module.css'
 
 export default function RoomPage() {
   const params = useParams()
@@ -20,22 +21,30 @@ export default function RoomPage() {
   } = useSocketSetup(roomID)
 
   return (
-    <div className="room-container">
-      <h1>Room: {roomID}</h1>
+    <div className={styles.roomContainer}>
+      <div className={styles.header}>
+        <h1>Room: {roomID}</h1>
+      </div>
       
-      <VideoForm onSubmit={changeVideo} />
+      <div className={styles.formContainer}>
+        <VideoForm onSubmit={changeVideo} />
+      </div>
       
-      <VideoPlayer 
-        roomID={roomID} 
-        socket={socket} 
-        setPlayer={player.setPlayer} 
-      />
+      <div className={styles.videoContainer}>
+        <VideoPlayer 
+          roomID={roomID} 
+          socket={socket} 
+          setPlayer={player.setPlayer} 
+        />
+      </div>
       
-      <ChatBox 
-        roomID={roomID}
-        socket={socket}
-        onSendMessage={sendMessage}
-      />
+      <div className={styles.chatContainer}>
+        <ChatBox 
+          roomID={roomID}
+          socket={socket}
+          onSendMessage={sendMessage}
+        />
+      </div>
     </div>
   );
 }
