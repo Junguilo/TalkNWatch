@@ -31,7 +31,7 @@ app.prepare().then(() => {
   const io = new Server(server, {
     cors: {
       origin: process.env.NODE_ENV === 'production' 
-        ? ["https://talknwatch-react.onrender.com", "https://*.onrender.com"]
+        ? ["https://talknwatch.onrender.com", "https://*.onrender.com"]
         : ["http://localhost:3000", "http://127.0.0.1:3000"],
       methods: ["GET", "POST"],
       credentials: true
