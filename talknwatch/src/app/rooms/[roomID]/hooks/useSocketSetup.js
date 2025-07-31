@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 export default function useSocketSetup(roomID) {
   const [socket, setSocket] = useState(null)
   const [playerInstance, setPlayerInstance] = useState(null)
+  const [numUsersInRoom, setNumUsersInRoom] = useState(1)  // Start with 1 (self)
 
   // Connect to socket.io when component mounts
   useEffect(() => {
@@ -39,6 +40,13 @@ export default function useSocketSetup(roomID) {
       socketInstance.on('connect', () => {
         console.log('Connected to socket server with ID:', socketInstance.id)
         socketInstance.emit('join-room', roomID)
+      })
+      
+      // Listen for room updates (user count)
+      socketInstance.on('roomUpdate', (data) => {
+        console.log('Room update received:', data);
+        console.log(`Updating user count to ${data.numClients}`);
+        setNumUsersInRoom(data.numClients);
       })
       
       // Store socket instance
@@ -89,7 +97,55 @@ export default function useSocketSetup(roomID) {
       time: time
     })
   }, [socket, playerInstance, roomID])
-  
+
+  // In your useSocketSetup.js
+  useEffect(() => {
+      if (!socket) return;
+      
+      // Handle initial room state when joining
+      socket.on('roomState', (state) => {
+          console.log('Received room state:', state);
+          
+          if (playerInstance && state.videoUrl) {
+              // Set the video
+              playerInstance.src({
+                  type: 'video/youtube',
+                  src: state.videoUrl
+              });
+              
+              // Seek to the correct position
+              // Add time elapsed since last update if the video was playing
+              let adjustedTime = state.timestamp;
+              if (state.isPlaying) {
+                  const secondsElapsed = (Date.now() - state.lastUpdate) / 1000;
+                  adjustedTime += secondsElapsed;
+              }
+              
+              playerInstance.currentTime(adjustedTime);
+              
+              // Play if it was playing
+              if (state.isPlaying) {
+                  playerInstance.play();
+              }
+          }
+      });
+      
+      // Send heartbeats while playing
+      const heartbeatInterval = setInterval(() => {
+          if (socket && playerInstance && !playerInstance.paused()) {
+              socket.emit('heartbeat', {
+                  room: roomID,
+                  time: playerInstance.currentTime()
+              });
+          }
+      }, 5000); // Every 5 seconds
+      
+      return () => {
+          clearInterval(heartbeatInterval);
+          socket.off('roomState');
+      };
+  }, [socket, playerInstance, roomID]);
+
   return {
     socket,
     player: {
@@ -98,6 +154,7 @@ export default function useSocketSetup(roomID) {
     },
     changeVideo,
     sendMessage,
-    syncTime
+    syncTime,
+    numUsersInRoom
   }
 }

@@ -4,8 +4,8 @@
     background-color: wheat;
     display: grid;
     grid-template-areas:
-        "header header header"
-        "form video chat"
+        "header header form"
+        "video video chat"
         "footer footer footer";
     grid-template-columns: 0.2fr 2fr 0.7fr;  
     grid-template-rows: auto 1fr auto;  

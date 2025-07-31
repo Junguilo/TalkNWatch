@@ -4,15 +4,22 @@ import styles from './ChatBox.module.css'
 import Image from 'next/image'
 
 
-export default function ChatBox({ roomID, socket, onSendMessage }) {
+export default function ChatBox({ roomID, socket, onSendMessage, numPeople }) {
   const [messages, setMessages] = useState([])
   const inputRef = useRef(null)
   const messageListRef = useRef(null) // Add this ref for the message list
+  const [numWatching, setNumWatching] = useState(0);
   
   //settings modal
   const nameRef = useRef(null)
   const dialogRef = useRef(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  //change the chat number to reflect how many people are in the room
+  useEffect(()=>{
+    console.log(`ChatBox: numPeople prop changed to ${numPeople}`);
+    setNumWatching(numPeople);
+  }, [numPeople]);
 
   //open/close dialog functions
   const openDialog = () => {
@@ -61,6 +68,22 @@ export default function ChatBox({ roomID, socket, onSendMessage }) {
     }
   }, [socket])
   
+  //listen for any new users that join the server
+  useEffect(() => {
+    if(!socket) return
+
+    const handleNewUsers = (data) => {
+        console.log('Room update in ChatBox:', data)
+        setNumWatching(data.numClients)
+    }
+
+    socket.on('roomUpdate', handleNewUsers)
+    
+    return () => {
+      socket.off('roomUpdate', handleNewUsers)
+    }
+  }, [socket])
+
   
   // Add auto-scroll effect when messages change
   useEffect(() => {
@@ -83,8 +106,8 @@ export default function ChatBox({ roomID, socket, onSendMessage }) {
               Chat
           </div>
 
-          <div className={styles.userCount}>
-              0
+          <div className={styles.userCount} title="Number of people watching">
+              {numWatching}
           </div>
         </div>
 

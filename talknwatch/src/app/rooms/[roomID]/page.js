@@ -17,7 +17,8 @@ export default function RoomPage() {
     player,
     changeVideo,
     sendMessage,
-    syncTime
+    syncTime,
+    numUsersInRoom
   } = useSocketSetup(roomID)
 
   return (
@@ -43,6 +44,7 @@ export default function RoomPage() {
           roomID={roomID}
           socket={socket}
           onSendMessage={sendMessage}
+          numPeople={numUsersInRoom}
         />
       </div>
     </div>

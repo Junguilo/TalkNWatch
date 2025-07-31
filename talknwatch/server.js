@@ -8,8 +8,13 @@ const {v4: uuidv4} = require("uuid");
 // Serve static files
 app.use(express.static(__dirname));
 
+// Track which rooms each socket belongs to
+const socketRooms = new Map(); //socketId -> Set of roomIds
+const roomStates = new Map(); // roomId -> {videoUrl, timestamp, lastUpdate}
+
 // Routes to serve pages
 app.get('/', (req, res) => {
+    console.log("test");
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
@@ -25,7 +30,7 @@ When the room gets disconnected, pop the room and you're unable to join it
 */
 app.get('/hostRoom', (req, res) => {
     const roomId = uuidv4();
-    res.redirect(`/rooms/${roomId}`);
+    res.redirect(`/room/${roomId}`);
 });
 
 const server = http.createServer(app);
@@ -34,7 +39,6 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: [
-            "http://localhost:3000",
             "http://localhost:5500", 
             "http://127.0.0.1:5500", 
             "https://talknwatch.onrender.com",
@@ -67,9 +71,47 @@ io.on('connection', (socket) => {
     
     //Join a hosted room
     socket.on('join-room', (roomId) => {
+        console.log(`Socket ${socket.id} joining room: ${roomId}`);
+        // Join the socket.io room
         socket.join(roomId);
-        socket.to(roomId).emit('signal', 'Connected to server successfully!'); //socket.emit, sends to that specific client. 
-        //when you join a room, it should update accordingly to the cache, need to do that later
+        
+        // Track this room for the socket
+        if (!socketRooms.has(socket.id)) {
+            socketRooms.set(socket.id, new Set());
+        }
+        socketRooms.get(socket.id).add(roomId);
+        
+        // Send welcome message to just this socket
+        //socket.emit('signal', 'Connected to server successfully!');
+        
+        // Notify others in the room
+        socket.to(roomId).emit('sendMessage', `A new user has joined the room.`);
+        
+        // Update everyone with new user count
+        const numClients = io.sockets.adapter.rooms.get(roomId)?.size || 0;
+        console.log(`Room ${roomId} now has ${numClients} clients`);
+        io.to(roomId).emit('roomUpdate', {roomId, numClients});
+
+        //send roomState to joining user
+        const roomState = roomStates.get(roomId);
+        if(roomState){
+            console.log(`Sending room state to new user ${socket.id}:`, roomState);
+            socket.emit('roomState', roomState);
+        } else {
+            // Create new room state with default values
+            const newRoomState = {
+                videoUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+                timestamp: 0,
+                lastUpdate: Date.now(),
+                isPlaying: false
+            };
+            roomStates.set(roomId, newRoomState);
+            
+            // Send the newly created state
+            socket.emit('roomState', newRoomState);
+            console.log(`Created and sent new room state for room ${roomId}:`, newRoomState);
+        }
+        
     });
 
     // Send a signal to the connected client
@@ -91,21 +133,51 @@ io.on('connection', (socket) => {
     });
 
     socket.on('changeVideo', (data) => {
-        console.log(data.link);
+        console.log(`User ${socket.id} changed video to: ${data.link}`);
         io.to(data.room).emit('sendMessage', `${socket.id} has changed the video.`);
         io.to(data.room).emit('changeBroadcastVideo', data.link);
+
+        // Get existing room state or create new one
+        const roomState = roomStates.get(data.room) || {};
+        
+        roomStates.set(data.room, {
+            ...roomState,
+            videoUrl: data.link, 
+            timestamp: 0,
+            lastUpdate: Date.now(),
+            isPlaying: false // Reset playing state when video changes
+        });
     });
 
     //handlePlay from frontend with improved event handling
     socket.on('play', (data) => {
         console.log(`Received playVideo from ${socket.id}: ${data.message}`);
+        
+        // Get existing room state
+        const roomState = roomStates.get(data.room) || {
+            videoUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+            timestamp: 0,
+            lastUpdate: Date.now(),
+            isPlaying: false
+        };
+        
+        // Only update timestamp if it's valid (not 0 when video has progressed)
+        const timestamp = (data.time > 0) ? data.time : roomState.timestamp;
+        
+        // Update room state
+        roomStates.set(data.room, {
+            ...roomState,
+            timestamp: timestamp,
+            lastUpdate: Date.now(),
+            isPlaying: true
+        });
 
         // Send a single system message to ALL clients
         io.to(data.room).emit('sendMessage', `${socket.id} has played the video.`);
 
         // Tell other clients to play with the current timestamp
         socket.to(data.room).emit('changeBroadcastPlay', {
-            time: data.time || 0
+            time: timestamp
         });
     });
 
@@ -113,12 +185,31 @@ io.on('connection', (socket) => {
     socket.on('pause', (data) => {
         console.log(`Received pauseVideo from ${socket.id}: ${data.message}`);
         
+        // Get existing room state
+        const roomState = roomStates.get(data.room) || {
+            videoUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+            timestamp: 0,
+            lastUpdate: Date.now(),
+            isPlaying: false
+        };
+        
+        // Only update timestamp if it's valid (not 0 when video has progressed)
+        const timestamp = (data.time > 0) ? data.time : roomState.timestamp;
+        
+        // Update room state
+        roomStates.set(data.room, {
+            ...roomState,
+            timestamp: timestamp,
+            lastUpdate: Date.now(),
+            isPlaying: false
+        });
+        
         // Send a single message to ALL clients
         io.to(data.room).emit('sendMessage', `${socket.id} has paused the video.`);
         
         // Tell other clients to pause with the current timestamp
         socket.to(data.room).emit('changeBroadcastPause', {
-            time: data.time || 0
+            time: timestamp
         });
     });
 
@@ -137,7 +228,53 @@ io.on('connection', (socket) => {
     // Handle disconnection //on receives data
     socket.on('disconnect', (reason) => {
         console.log(`Client disconnected: ${socket.id}, reason: ${reason}`);
+        
+        // Get rooms this socket was in from our tracking map
+        const socketRoomSet = socketRooms.get(socket.id);
+        if (socketRoomSet) {
+            // Update user count for each room this socket was in
+            socketRoomSet.forEach(roomId => {
+                // Get the updated count (might be 0 if room is empty now)
+                const numClients = io.sockets.adapter.rooms.get(roomId)?.size || 0;
+                
+                // Send update to remaining users
+                io.to(roomId).emit('roomUpdate', {roomId, numClients});
+                
+                // Send message that user left
+                io.to(roomId).emit('sendMessage', `A user has left the room.`);
+                
+                console.log(`Updated room ${roomId}: ${numClients} users remaining`);
+            });
+            
+            // Clean up our tracking map
+            socketRooms.delete(socket.id);
+        }
     });
+
+    // Receive periodic updates from clients
+    socket.on('heartbeat', (data) => {
+        const roomState = roomStates.get(data.room);
+        if (roomState && typeof data.time === 'number' && data.time > 0) {
+            // Only update timestamp if it's a valid value
+            roomStates.set(data.room, {
+                ...roomState,
+                timestamp: data.time,
+                lastUpdate: Date.now()
+            });
+            console.log(`Updated room ${data.room} timestamp to ${data.time} via heartbeat`);
+        }
+    });
+
+    // Clean up empty rooms periodically
+    setInterval(() => {
+        for (const [roomId, state] of roomStates.entries()) {
+            const room = io.sockets.adapter.rooms.get(roomId);
+            if (!room || room.size === 0) {
+                roomStates.delete(roomId);
+                console.log(`Cleaned up empty room: ${roomId}`);
+            }
+        }
+    }, 5 * 60 * 1000); // Check every 5 minutes
 });
 
 app.get('/status', (req, res) => {
