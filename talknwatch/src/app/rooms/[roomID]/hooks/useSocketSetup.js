@@ -20,13 +20,11 @@ export default function useSocketSetup(roomID) {
         script.onload = () => resolve(window.io)
         document.head.appendChild(script)
       })
-    }
-    
-    // Initialize socket
+    }      // Initialize socket
     loadSocketIO().then(io => {
       console.log("Socket.IO script loaded successfully")
       const socketHost = window.location.hostname === 'localhost' 
-        ? 'http://localhost:8080' 
+        ? 'http://localhost:3000' 
         : window.location.origin
       
       console.log(`Connecting to socket server at: ${socketHost}`)
