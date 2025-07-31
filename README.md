@@ -1,7 +1,7 @@
 # TalkNWatch
 Youtube Watchparty with a few extra added features
 
-!(show.gif)
+![](show.gif)
 
 ## Installation
 
