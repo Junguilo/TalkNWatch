@@ -6,9 +6,11 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Initialize Next.js
 const dev = process.env.NODE_ENV !== 'production';
+console.log(`Running in ${dev ? 'development' : 'production'} mode`);
 const app = next({ dev, dir: '.' });
 const handle = app.getRequestHandler();
 const port = process.env.PORT || 3000;
+console.log(`Using port: ${port}`);
 
 // Track room data
 const socketRooms = new Map(); // socketId -> Set of roomIds
@@ -18,7 +20,15 @@ const roomStates = new Map(); // roomId -> {videoUrl, timestamp, lastUpdate}
 app.prepare().then(() => {
   const server = createServer(async (req, res) => {
     try {
+      // Add a simple health check route
       const parsedUrl = parse(req.url, true);
+      if (parsedUrl.pathname === '/api/health') {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ status: 'ok', message: 'Server is running', env: process.env.NODE_ENV }));
+        return;
+      }
+      
       await handle(req, res, parsedUrl);
     } catch (err) {
       console.error('Error occurred handling', req.url, err);
@@ -31,7 +41,7 @@ app.prepare().then(() => {
   const io = new Server(server, {
     cors: {
       origin: process.env.NODE_ENV === 'production' 
-        ? ["https://talknwatch.onrender.com", "https://talknwatch-next.onrender.com", "https://*.onrender.com"]
+        ? ["*", "https://talknwatch.onrender.com", "https://talknwatch-next.onrender.com", "https://*.onrender.com"]
         : ["http://localhost:3000", "http://127.0.0.1:3000"],
       methods: ["GET", "POST"],
       credentials: true
